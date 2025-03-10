@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galeri Album Interaktif - Tema Luar Angkasa</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0a0a0a;
+            font-family: Arial, sans-serif;
+            color: #ffffff;
+            overflow-x: hidden;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0.8);
+            position: relative;
+            z-index: 1;
+        }
+
+        .back-btn-header {
+            background: none;
+            border: none;
+            color: #00b4d8;
+            font-size: 24px;
+            cursor: pointer;
+            margin-right: 15px;
+            display: none;
+        }
+
+        .header-title {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .albums-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .album {
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .album-cover {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 12px;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            border: 2px solid #00b4d8;
+        }
+
+        .album-cover:hover {
+            transform: scale(1.05);
+            opacity: 0.9;
+        }
+
+        .album-title {
+            margin: 10px 0;
+            font-size: 18px;
+            text-shadow: 0 0 5px #00b4d8;
+        }
+
+        .gallery {
+            display: none;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .gallery.active {
+            display: grid;
+        }
+
+        .thumbnail {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            cursor: pointer;
+            border-radius: 12px;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            border: 2px solid #00b4d8;
+        }
+
+        .thumbnail:hover {
+            transform: scale(1.05);
+            opacity: 0.9;
+        }
+
+        .fullscreen {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.95);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .fullscreen.active {
+            display: flex;
+        }
+
+        .fullscreen img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 12px;
+            border: 2px solid #00b4d8;
+        }
+
+        .close-btn, .nav-btn {
+            position: absolute;
+            background: none;
+            border: none;
+            color: #00b4d8;
+            font-size: 30px;
+            cursor: pointer;
+            padding: 10px;
+            transition: color 0.3s ease;
+        }
+
+        .close-btn:hover, .nav-btn:hover {
+            color: #00eaff;
+        }
+
+        .close-btn {
+            top: 20px;
+            right: 20px;
+        }
+
+        .nav-btn.prev {
+            left: 20px;
+        }
+
+        .nav-btn.next {
+            right: 20px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="particleCanvas"></canvas>
+
+    <div class="header">
+        <button class="back-btn-header" id="backBtnHeader">←</button>
+        <div class="header-title" id="headerTitle">Album </div>
+    </div>
+
+    <div class="albums-container" id="albums">
+        <div class="album" data-album="album1">
+            <img src="img/2.jpg" class="album-cover" alt="album 1">
+            <div class="album-title">album 1</div>
+        </div>
+        <div class="album" data-album="album2">
+            <img src="img/3.jpg" class="album-cover" alt="album 2">
+            <div class="album-title">album 2</div>
+        </div>
+        <div class="album" data-album="album3">
+            <img src="img/4.jpg" class="album-cover" alt="Planet">
+            <div class="album-title">album 3</div>
+        </div>
+        <div class="album" data-album="album4">
+            <img src="img/5.jpg" class="album-cover" alt="Bintang">
+            <div class="album-title">album 4</div>
+        </div>
+        <div class="album" data-album="album5">
+            <img src="img/6.jpg" class="album-cover" alt="Asteroid">
+            <div class="album-title">album 5</div>
+        </div>
+    </div>
+
+    <div class="gallery" id="gallery"></div>
+
+    <div class="fullscreen" id="fullscreen">
+        <button class="close-btn">×</button>
+        <button class="nav-btn prev"><</button>
+        <img src="" alt="Fullscreen Image">
+        <button class="nav-btn next">></button>
+    </div>
+
+    <script>
+        // Data album (5 album, masing-masing 5 foto)
+        const albumsData = {
+            album1: [
+                { src: "img/7.jpg", alt: "Galaksi 1" },
+                { src: "img/8.jpg", alt: "Galaksi 2" },
+                { src: "img/9.jpg", alt: "Galaksi 3" },
+                { src: "img/10.jpg", alt: "Galaksi 4" },
+                { src: "img/11.jpg", alt: "Galaksi 5" },
+            ],
+            album2: [
+                { src: "img/12.jpg", alt: "Nebula 1" },
+                { src: "img/13.jpg", alt: "Nebula 2" },
+                { src: "img/14.jpg", alt: "Nebula 3" },
+                { src: "img/15.jpg", alt: "Nebula 4" },
+                { src: "img/16.jpg", alt: "Nebula 5" },
+                
+                
+            ],
+            album3: [
+                { src: "img/7.jpg", alt: "Planet 1" },
+                { src: "img/8.jpg", alt: "Planet 2" },
+                { src: "img/9.jpg", alt: "Planet 3" },
+                { src: "img/10.jpg", alt: "Planet 4" },
+                { src: "img/11.jpg", alt: "Planet 5" },
+                
+            ],
+            album4: [
+            { src: "img/12.jpg", alt: "Planet 1" },
+                { src: "img/13.jpg", alt: "Planet 2" },
+                { src: "img/14.jpg", alt: "Planet 3" },
+                { src: "img/15.jpg", alt: "Planet 4" },
+                { src: "img/16.jpg", alt: "Planet 5" },
+            ],
+            album5: [
+                { src: "img/7.jpg", alt: "Asteroid 1" },
+                { src: "img/8.jpg", alt: "Asteroid 2" },
+                { src: "img/9.jpg", alt: "Asteroid 3" },
+                { src: "img/10.jpg", alt: "Asteroid 4" },
+                { src: "img/11.jpg", alt: "Asteroid 5" },
+            ]
+        };
+
+        // Particle effect
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const particlesArray = [];
+        const numberOfParticles = 150;
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 3 + 1;
+                this.speedX = Math.random() * 1 - 0.5;
+                this.speedY = Math.random() * 1 - 0.5;
+                this.color = `hsl(${Math.random() * 360}, 50%, 50%)`;
+            }
+
+            update(mouseX, mouseY) {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                const dx = mouseX - this.x;
+                const dy = mouseY - this.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < 100) {
+                    this.size = Math.min(this.size + 1, 10);
+                    this.speedX += dx * 0.05;
+                    this.speedY += dy * 0.05;
+                } else {
+                    this.size = Math.max(this.size - 0.1, 1);
+                }
+
+                if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < numberOfParticles; i++) {
+            particlesArray.push(new Particle());
+        }
+
+        let mouseX = 0;
+        let mouseY = 0;
+
+        canvas.addEventListener('mousemove', (e) => {
+            mouseX = e.x;
+            mouseY = e.y;
+        });
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < particlesArray.length; i++) {
+                particlesArray[i].update(mouseX, mouseY);
+                particlesArray[i].draw();
+            }
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        // Album dan Gallery Logic
+        const albumsContainer = document.getElementById('albums');
+        const gallery = document.getElementById('gallery');
+        const backBtnHeader = document.getElementById('backBtnHeader');
+        const headerTitle = document.getElementById('headerTitle');
+        const fullscreen = document.getElementById('fullscreen');
+        const fullscreenImg = fullscreen.querySelector('img');
+        const closeBtn = fullscreen.querySelector('.close-btn');
+        const prevBtn = fullscreen.querySelector('.prev');
+        const nextBtn = fullscreen.querySelector('.next');
+        let currentImages = [];
+        let currentIndex = 0;
+
+        function showAlbum(albumId) {
+            albumsContainer.style.display = 'none';
+            gallery.innerHTML = '';
+            currentImages = albumsData[albumId];
+            currentImages.forEach((img, index) => {
+                const thumbnail = document.createElement('img');
+                thumbnail.src = img.src;
+                thumbnail.alt = img.alt;
+                thumbnail.classList.add('thumbnail');
+                thumbnail.addEventListener('click', () => openFullscreen(index));
+                gallery.appendChild(thumbnail);
+            });
+            gallery.classList.add('active');
+            backBtnHeader.style.display = 'block';
+            headerTitle.textContent = albumsData[albumId][0].alt.split(' ')[0]; // Update header title
+        }
+
+        function showAlbums() {
+            gallery.classList.remove('active');
+            backBtnHeader.style.display = 'none';
+            albumsContainer.style.display = 'grid';
+            headerTitle.textContent = 'Album Luar Angkasa';
+        }
+
+        function openFullscreen(index) {
+            currentIndex = index;
+            fullscreenImg.src = currentImages[currentIndex].src;
+            fullscreen.classList.add('active');
+        }
+
+        function closeFullscreen() {
+            fullscreen.classList.remove('active');
+        }
+
+        function showNext() {
+            currentIndex = (currentIndex + 1) % currentImages.length;
+            fullscreenImg.src = currentImages[currentIndex].src;
+        }
+
+        function showPrev() {
+            currentIndex = (currentIndex - 1 + currentImages.length) % currentImages.length;
+            fullscreenImg.src = currentImages[currentIndex].src;
+        }
+
+        document.querySelectorAll('.album').forEach(album => {
+            album.addEventListener('click', () => showAlbum(album.dataset.album));
+        });
+
+        backBtnHeader.addEventListener('click', showAlbums);
+        closeBtn.addEventListener('click', closeFullscreen);
+        nextBtn.addEventListener('click', showNext);
+        prevBtn.addEventListener('click', showPrev);
+
+        fullscreen.addEventListener('click', (e) => {
+            if (e.target === fullscreen) {
+                closeFullscreen();
+            }
+        });
+    </script>
+</body>
+</html>
